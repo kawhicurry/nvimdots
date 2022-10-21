@@ -25,7 +25,11 @@ function config.nvim_treesitter()
 			"vue",
 			"css",
 		},
-		highlight = { enable = true, disable = { "vim" } },
+		highlight = {
+			enable = true,
+			disable = { "vim" },
+			additional_vim_regex_highlighting = false,
+		},
 		textobjects = {
 			select = {
 				enable = true,
@@ -73,15 +77,6 @@ function config.nvim_treesitter()
 end
 
 function config.illuminate()
-	-- Use background for "Visual" as highlight for words. Change this behavior here!
-	if vim.api.nvim_get_hl_by_name("Visual", true).background then
-		local illuminate_bg = string.format("#%06x", vim.api.nvim_get_hl_by_name("Visual", true).background)
-
-		vim.api.nvim_set_hl(0, "IlluminatedWordText", { bg = illuminate_bg })
-		vim.api.nvim_set_hl(0, "IlluminatedWordRead", { bg = illuminate_bg })
-		vim.api.nvim_set_hl(0, "IlluminatedWordWrite", { bg = illuminate_bg })
-	end
-
 	require("illuminate").configure({
 		providers = {
 			"lsp",
@@ -115,10 +110,6 @@ end
 
 function config.hop()
 	require("hop").setup({ keys = "etovxqpdygfblzhckisuran" })
-end
-
-function config.matchup()
-	vim.cmd([[let g:matchup_matchparen_offscreen = {'method': 'popup'}]])
 end
 
 function config.autotag()
@@ -208,8 +199,13 @@ function config.toggleterm()
 end
 
 function config.dapui()
+	local icons = {
+		ui = require("modules.ui.icons").get("ui"),
+		dap = require("modules.ui.icons").get("dap"),
+	}
+
 	require("dapui").setup({
-		icons = { expanded = "▾", collapsed = "▸" },
+		icons = { expanded = icons.ui.ArrowOpen, collapsed = icons.ui.ArrowClosed, current_frame = icons.ui.Indicator },
 		mappings = {
 			-- Use a table to apply multiple mappings
 			expand = { "<CR>", "<2-LeftMouse>" },
@@ -235,6 +231,22 @@ function config.dapui()
 			},
 			{ elements = { "repl" }, size = 10, position = "bottom" },
 		},
+		-- Requires Nvim version >= 0.8
+		controls = {
+			enabled = true,
+			-- Display controls in this session
+			element = "repl",
+			icons = {
+				pause = icons.dap.Pause,
+				play = icons.dap.Play,
+				step_into = icons.dap.StepInto,
+				step_over = icons.dap.StepOver,
+				step_out = icons.dap.StepOut,
+				step_back = icons.dap.StepBack,
+				run_last = icons.dap.RunLast,
+				terminate = icons.dap.Terminate,
+			},
+		},
 		floating = {
 			max_height = nil,
 			max_width = nil,
@@ -245,7 +257,9 @@ function config.dapui()
 end
 
 function config.dap()
-	vim.cmd([[packadd nvim-dap-ui]])
+	local icons = { dap = require("modules.ui.icons").get("dap") }
+
+	vim.api.nvim_command([[packadd nvim-dap-ui]])
 	local dap = require("dap")
 	local dapui = require("dapui")
 
@@ -262,11 +276,20 @@ function config.dap()
 	-- We need to override nvim-dap's default highlight groups, AFTER requiring nvim-dap for catppuccin.
 	vim.api.nvim_set_hl(0, "DapStopped", { fg = "#ABE9B3" })
 
-	vim.fn.sign_define("DapBreakpoint", { text = "", texthl = "DapBreakpoint", linehl = "", numhl = "" })
-	vim.fn.sign_define("DapBreakpointCondition", { text = "ﳁ", texthl = "DapBreakpoint", linehl = "", numhl = "" })
-	vim.fn.sign_define("DapBreakpointRejected", { text = "", texthl = "DapBreakpoint", linehl = "", numhl = "" })
-	vim.fn.sign_define("DapLogPoint", { text = "", texthl = "DapLogPoint", linehl = "", numhl = "" })
-	vim.fn.sign_define("DapStopped", { text = "", texthl = "DapStopped", linehl = "", numhl = "" })
+	vim.fn.sign_define(
+		"DapBreakpoint",
+		{ text = icons.dap.Breakpoint, texthl = "DapBreakpoint", linehl = "", numhl = "" }
+	)
+	vim.fn.sign_define(
+		"DapBreakpointCondition",
+		{ text = icons.dap.BreakpointCondition, texthl = "DapBreakpoint", linehl = "", numhl = "" }
+	)
+	vim.fn.sign_define("DapStopped", { text = icons.dap.Stopped, texthl = "DapStopped", linehl = "", numhl = "" })
+	vim.fn.sign_define(
+		"DapBreakpointRejected",
+		{ text = icons.dap.BreakpointRejected, texthl = "DapBreakpoint", linehl = "", numhl = "" }
+	)
+	vim.fn.sign_define("DapLogPoint", { text = icons.dap.LogPoint, texthl = "DapLogPoint", linehl = "", numhl = "" })
 
 	dap.adapters.lldb = {
 		type = "executable",
@@ -358,7 +381,7 @@ function config.dap()
 
 	dap.adapters.python = {
 		type = "executable",
-		command = os.getenv("HOME") .. "/.local/share/nvim/dapinstall/python/bin/python",
+		command = "/usr/bin/python",
 		args = { "-m", "debugpy.adapter" },
 	}
 	dap.configurations.python = {
@@ -428,17 +451,18 @@ end
 function config.imselect()
 	-- fcitx5 need a manual config
 	if vim.fn.executable("fcitx5-remote") == 1 then
-		vim.cmd([[
-		let g:im_select_get_im_cmd = ["fcitx5-remote"]
-		let g:im_select_default = '1'
-		let g:ImSelectSetImCmd = {
+		vim.api.nvim_cmd({
+			[[ let g:im_select_get_im_cmd = ["fcitx5-remote"] ]],
+			[[ let g:im_select_default = '1' ]],
+			[[ let g:ImSelectSetImCmd = {
 			\ key ->
 			\ key == 1 ? ['fcitx5-remote', '-c'] :
 			\ key == 2 ? ['fcitx5-remote', '-o'] :
 			\ key == 0 ? ['fcitx5-remote', '-c'] :
 			\ execute("throw 'invalid im key'")
 			\ }
-			]])
+			]],
+		}, { true, true, true })
 	end
 end
 
