@@ -91,7 +91,7 @@ local function load_options()
 		shiftwidth = 2,
 		softtabstop = 2,
 		breakindentopt = "shift:2,min:20",
-		wrap = false,
+		wrap = true,
 		linebreak = true,
 		number = true,
 		relativenumber = true,
